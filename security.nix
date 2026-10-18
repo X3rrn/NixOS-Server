@@ -1,0 +1,1 @@
+{flake.modules.nixos.security={config,pkgs,lib,...}:{security={sudo.extraConfig="Defaults timestamp_timeout=1440";polkit.enable=true;pam.loginLimits=[{domain="*";type="soft";item="nofile";value="2097152";}{domain="*";type="hard";item="nofile";value="2097152";}];};powerManagement.cpuFreqGovernor="performance";};}

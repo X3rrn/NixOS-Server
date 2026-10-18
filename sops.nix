@@ -1,0 +1,1 @@
+{flake.modules.nixos.sops={config,pkgs,lib,...}:{sops={defaultSopsFile=./secrets.yaml;age.sshKeyPaths=["/etc/ssh/ssh_host_ed25519_key"];secrets.github-pat.mode="0444";};};}
