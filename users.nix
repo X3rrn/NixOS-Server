@@ -1,1 +1,1 @@
-{flake.modules.nixos.users={config,pkgs,lib,...}:{users.users.yuda={isNormalUser=true;extraGroups=["wheel" "systemd-journal"];};};}
+{flake.modules.nixos.users={config,pkgs,lib,...}:{users={users.clamav={isSystemUser=true;group="clamav";};groups.clamav={};users.yuda={isNormalUser=true;extraGroups=["wheel" "systemd-journal"];};};};}
