@@ -19,6 +19,11 @@ jobs:
       NIXPKGS_ALLOW_INSECURE: 1
 
     steps:
+      - name: Show runner CPU
+        run: |
+          lscpu
+          grep "model name" /proc/cpuinfo
+
       - name: Free disk space
         uses: jlumbroso/free-disk-space@main
         with:
@@ -44,6 +49,7 @@ jobs:
             echo "zram module unavailable this run, skipping"
           fi
 
+          sudo rm -rf /swapfile
           sudo fallocate -l 4G /swapfile
           sudo chmod 600 /swapfile
           sudo mkswap /swapfile
@@ -100,7 +106,7 @@ jobs:
         id: build
         run: |
           set -euo pipefail
-          echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --max-jobs 1 --cores 0 --accept-flake-config --print-out-paths --show-trace --impure -L)" >> $GITHUB_OUTPUT
+          echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --print-out-paths --show-trace --impure -L)" >> $GITHUB_OUTPUT
 
       - name: Explicitly push all dependencies to Cachix
         run: |
