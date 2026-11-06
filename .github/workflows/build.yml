@@ -78,7 +78,7 @@ jobs:
 
       - name: Print full build logs
         if: always()
-        run: cat ~/.local/state/nix/build-logs/*.jsonl 2>/dev/null || true
+        run: cat ~/.local/state/nix/build-logs/*.jsonl 2>/dev/null || true ;test -f "$RUNNER_TEMP/build.log" && cat "$RUNNER_TEMP/build.log" || true
 
       - name: Show logs of failed derivations
         if: always()
