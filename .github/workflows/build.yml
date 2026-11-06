@@ -24,7 +24,7 @@ jobs:
         run: lscpu ;grep "model name" /proc/cpuinfo
 
       - name: RAM
-        run: sudo apt-get update; if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram; then sudo apt-get install -y zram-tools; echo -e "ALGO=lz4\nPERCENT=200\nPRIORITY=32766" | sudo tee /etc/default/zramswap; sudo systemctl restart zramswap.service; fi; sudo swapoff -a; sudo rm -f /swapfile ;sudo fallocate -l 4G /swapfile ;sudo chmod 600 /swapfile ;sudo mkswap /swapfile ;sudo swapon -p 16383 /swapfile ;swapon --show ;free -h
+        run: sudo apt-get update ;if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram ;then sudo apt-get install -y zram-tools ;sudo bash -c 'echo ALGO=lz4 > /etc/default/zramswap ;echo PERCENT=200 >> /etc/default/zramswap ;echo PRIORITY=32766 >> /etc/default/zramswap' ;sudo systemctl restart zramswap.service ;fi ;sudo swapoff -a ;sudo rm -f /swapfile ;sudo fallocate -l 4G /swapfile ;sudo chmod 600 /swapfile ;sudo mkswap /swapfile ;sudo swapon -p 16383 /swapfile ;swapon --show ;free -h
 
       - name: Free-disk-space
         uses: jlumbroso/free-disk-space@main
@@ -70,7 +70,7 @@ jobs:
 
       - name: Install nix-compact
         timeout-minutes: 90
-        run: echo "$(nix build $COMPACT_FLAKE#default.nix-cli^out --no-link --print-out-paths)/bin" >> "$GITHUB_PATH"
+        run: set -euo pipefail ;echo "COMPACT_FLAKE=${COMPACT_FLAKE}" ;nix --version ;COMPACT_STORE_PATH="$(nix build "${COMPACT_FLAKE}#default.nix-cli^out" --no-link --print-out-paths)" ;echo "COMPACT_STORE_PATH=${COMPACT_STORE_PATH}" ;if test -z "${COMPACT_STORE_PATH}" ;then echo "ERROR: nix build returned empty store path" ;exit 1 ;fi ;if test -d "${COMPACT_STORE_PATH}/bin" ;then ls -la "${COMPACT_STORE_PATH}/bin" ;else echo "ERROR: missing bin dir at ${COMPACT_STORE_PATH}" ;ls -la "${COMPACT_STORE_PATH}" ;exit 1 ;fi ;echo "${COMPACT_STORE_PATH}/bin" >> "$GITHUB_PATH" ;echo "GITHUB_PATH now contains:" ;cat "$GITHUB_PATH"
 
       - name: Build NixOS
         id: build
@@ -78,11 +78,11 @@ jobs:
 
       - name: Print full build logs
         if: always()
-        run: cat ~/.local/state/nix/build-logs/*.jsonl 2>/dev/null || true ;test -f "$RUNNER_TEMP/build.log" && cat "$RUNNER_TEMP/build.log" || true
+        run: cat ~/.local/state/nix/build-logs/*.jsonl 2>/dev/null ;test -f "$RUNNER_TEMP/build.log" && cat "$RUNNER_TEMP/build.log" ;true
 
       - name: Show logs of failed derivations
         if: always()
-        run: test -f "$RUNNER_TEMP/build.log" && grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" | sort -u | xargs -r -n1 nix log || true
+        run: test -f "$RUNNER_TEMP/build.log" && grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" > /tmp/drvs.txt ;if test -s /tmp/drvs.txt ;then sort -u /tmp/drvs.txt > /tmp/drvs_sorted.txt ;xargs -r -n1 nix log < /tmp/drvs_sorted.txt ;fi ;true
 
       - name: Upload-artifact full build logs
         if: always()
@@ -93,7 +93,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Explicitly push all dependencies to Cachix
-        run: nix path-info -r ${{ steps.build.outputs.result }} --impure 2>/dev/null | cachix push x3rrn-nixos || true
+        run: nix path-info -r ${{ steps.build.outputs.result }} --impure 2>/dev/null > /tmp/paths.txt ;xargs -r cachix push x3rrn-nixos < /tmp/paths.txt ;true
 
       - name: Save ccache
         if: always()
@@ -106,4 +106,4 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh cache list --key "ccache-${{ runner.os }}-" --limit 100 --json id,key,ref | jq -r --arg current "${{ github.run_id }}" '.[] | select(.key | contains($current) | not) | .id' | xargs -r -n1 gh cache delete
+        run: gh cache list --key "ccache-${{ runner.os }}-" --limit 100 --json id,key > /tmp/cache.json ;python3 -c "import json,sys;d=json.load(open('/tmp/cache.json'));print(chr(10).join(str(x['id']) for x in d if '${{ github.run_id }}' not in x['key']))" > /tmp/cache_ids.txt ;xargs -r -n1 gh cache delete < /tmp/cache_ids.txt
