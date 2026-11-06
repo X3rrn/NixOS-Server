@@ -70,7 +70,7 @@ jobs:
 
       - name: Install nix-compact
         timeout-minutes: 90
-        run: set -euo pipefail ;echo "COMPACT_FLAKE=${COMPACT_FLAKE}" ;nix --version ;COMPACT_STORE_PATH="$(nix build "${COMPACT_FLAKE}#default.nix-cli^out" --no-link --print-out-paths)" ;echo "COMPACT_STORE_PATH=${COMPACT_STORE_PATH}" ;if test -z "${COMPACT_STORE_PATH}" ;then echo "ERROR: nix build returned empty store path" ;exit 1 ;fi ;if test -d "${COMPACT_STORE_PATH}/bin" ;then ls -la "${COMPACT_STORE_PATH}/bin" ;else echo "ERROR: missing bin dir at ${COMPACT_STORE_PATH}" ;ls -la "${COMPACT_STORE_PATH}" ;exit 1 ;fi ;echo "${COMPACT_STORE_PATH}/bin" >> "$GITHUB_PATH" ;echo "GITHUB_PATH now contains:" ;cat "$GITHUB_PATH"
+        run: 'set -euo pipefail ;echo "COMPACT_FLAKE=${COMPACT_FLAKE}" ;nix --version ;COMPACT_STORE_PATH="$(nix build "${COMPACT_FLAKE}#default.nix-cli^out" --no-link --print-out-paths)" ;echo "COMPACT_STORE_PATH=${COMPACT_STORE_PATH}" ;if test -z "${COMPACT_STORE_PATH}" ;then echo "ERROR: nix build returned empty store path" ;exit 1 ;fi ;if test -d "${COMPACT_STORE_PATH}/bin" ;then ls -la "${COMPACT_STORE_PATH}/bin" ;else echo "ERROR: missing bin dir at ${COMPACT_STORE_PATH}" ;ls -la "${COMPACT_STORE_PATH}" ;exit 1 ;fi ;echo "${COMPACT_STORE_PATH}/bin" >> "$GITHUB_PATH" ;echo "GITHUB_PATH now contains:" ;cat "$GITHUB_PATH"'
 
       - name: Build NixOS
         id: build
