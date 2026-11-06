@@ -72,9 +72,9 @@ jobs:
         timeout-minutes: 90
         run: 'set -euo pipefail ;echo "COMPACT_FLAKE=${COMPACT_FLAKE}" ;nix --version ;COMPACT_STORE_PATH="$(nix build "${COMPACT_FLAKE}#default.nix-cli^out" --no-link --print-out-paths)" ;echo "COMPACT_STORE_PATH=${COMPACT_STORE_PATH}" ;if test -z "${COMPACT_STORE_PATH}" ;then echo "ERROR: nix build returned empty store path" ;exit 1 ;fi ;if test -d "${COMPACT_STORE_PATH}/bin" ;then ls -la "${COMPACT_STORE_PATH}/bin" ;else echo "ERROR: missing bin dir at ${COMPACT_STORE_PATH}" ;ls -la "${COMPACT_STORE_PATH}" ;exit 1 ;fi ;echo "${COMPACT_STORE_PATH}/bin" >> "$GITHUB_PATH" ;echo "GITHUB_PATH now contains:" ;cat "$GITHUB_PATH"'
 
-            - name: Build NixOS
+      - name: Build NixOS
         id: build
-        run: 'set -euo pipefail ;echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --print-out-paths --show-trace --impure 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> "$GITHUB_OUTPUT"'
+        run: set -euo pipefail ;echo "result=$(nix build .#nixosConfigurations.nixos.config.system.build.toplevel --extra-system-features gccarch-bdver3 --max-jobs 1 --cores 0 --accept-flake-config --option sandbox false --print-out-paths --show-trace --impure 2> >(tee "$RUNNER_TEMP/build.log" >&2))" >> "$GITHUB_OUTPUT"
 
       - name: Print full build logs
         if: always()
