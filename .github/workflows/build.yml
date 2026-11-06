@@ -24,7 +24,7 @@ jobs:
         run: lscpu ;grep "model name" /proc/cpuinfo
 
       - name: RAM
-        run: sudo apt-get update ;if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram ;then sudo apt-get install -y zram-tools ;sudo bash -c 'echo ALGO=lz4 > /etc/default/zramswap ;echo PERCENT=200 >> /etc/default/zramswap ;echo PRIORITY=32766 >> /etc/default/zramswap' ;sudo systemctl restart zramswap.service ;fi ;sudo swapoff -a ;sudo rm -f /swapfile ;sudo fallocate -l 4G /swapfile ;sudo chmod 600 /swapfile ;sudo mkswap /swapfile ;sudo swapon -p 16383 /swapfile ;swapon --show ;free -h
+        run: sudo apt-get update ;if sudo apt-get install --yes "linux-modules-extra-$(uname -r)" && sudo modprobe zram ;then sudo apt-get install -y zram-tools ;{ echo 'ALGO=lz4' ;echo 'PERCENT=200' ;echo 'PRIORITY=32766' ;} > /tmp/zramswap ;sudo install -m 644 /tmp/zramswap /etc/default/zramswap ;sudo systemctl restart zramswap.service ;fi ;sudo swapoff -a ;sudo rm -f /swapfile ;sudo fallocate -l 4G /swapfile ;sudo chmod 600 /swapfile ;sudo mkswap /swapfile ;sudo swapon -p 16383 /swapfile ;swapon --show ;free -h
 
       - name: Free-disk-space
         uses: jlumbroso/free-disk-space@main
@@ -78,11 +78,11 @@ jobs:
 
       - name: Print full build logs
         if: always()
-        run: cat ~/.local/state/nix/build-logs/*.jsonl 2>/dev/null ;test -f "$RUNNER_TEMP/build.log" && cat "$RUNNER_TEMP/build.log" ;true
+        run: set +e ;cat ~/.local/state/nix/build-logs/*.jsonl 2>/dev/null ;test -f "$RUNNER_TEMP/build.log" && cat "$RUNNER_TEMP/build.log" ;set -e
 
       - name: Show logs of failed derivations
         if: always()
-        run: test -f "$RUNNER_TEMP/build.log" && grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" > /tmp/drvs.txt ;if test -s /tmp/drvs.txt ;then sort -u /tmp/drvs.txt > /tmp/drvs_sorted.txt ;xargs -r -n1 nix log < /tmp/drvs_sorted.txt ;fi ;true
+        run: set +e ;if test -f "$RUNNER_TEMP/build.log" ;then grep -oP '(?<=nix log )/nix/store/[^ ]+[.]drv' "$RUNNER_TEMP/build.log" > "$RUNNER_TEMP/drvs.txt" ;sort -u "$RUNNER_TEMP/drvs.txt" > "$RUNNER_TEMP/drvs-uniq.txt" ;while IFS= read -r d ;do nix log "$d" ;done < "$RUNNER_TEMP/drvs-uniq.txt" ;fi ;set -e
 
       - name: Upload-artifact full build logs
         if: always()
@@ -93,7 +93,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Explicitly push all dependencies to Cachix
-        run: nix path-info -r ${{ steps.build.outputs.result }} --impure 2>/dev/null > /tmp/paths.txt ;xargs -r cachix push x3rrn-nixos < /tmp/paths.txt ;true
+        run: set +e ;if test -n "${{ steps.build.outputs.result }}" ;then nix path-info -r ${{ steps.build.outputs.result }} --impure 2>/dev/null > "$RUNNER_TEMP/deps.txt" ;cachix push x3rrn-nixos < "$RUNNER_TEMP/deps.txt" ;fi ;set -e
 
       - name: Save ccache
         if: always()
@@ -106,4 +106,4 @@ jobs:
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh cache list --key "ccache-${{ runner.os }}-" --limit 100 --json id,key > /tmp/cache.json ;python3 -c "import json,sys;d=json.load(open('/tmp/cache.json'));print(chr(10).join(str(x['id']) for x in d if '${{ github.run_id }}' not in x['key']))" > /tmp/cache_ids.txt ;xargs -r -n1 gh cache delete < /tmp/cache_ids.txt
+        run: gh cache list --key "ccache-${{ runner.os }}-" --limit 100 --json id,key,ref > "$RUNNER_TEMP/caches.json" ;python3 -c 'import json,sys ;data=json.load(open(sys.argv[1])) ;cur=sys.argv[2] ;print(chr(10).join(str(c["id"]) for c in data if cur not in c["key"]))' "$RUNNER_TEMP/caches.json" "${{ github.run_id }}" > "$RUNNER_TEMP/ids.txt" ;set +e ;while IFS= read -r id ;do if test -n "$id" ;then gh cache delete "$id" ;fi ;done < "$RUNNER_TEMP/ids.txt" ;set -e
